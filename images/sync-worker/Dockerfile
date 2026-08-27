@@ -37,6 +37,9 @@ RUN mise trust /src/mise.toml
 
 WORKDIR /src/deps/db-sync
 RUN mise exec -- corepack enable
+COPY images/sync-worker/patches /tmp/patches
+RUN git apply --check /tmp/patches/*.patch \
+  && git apply /tmp/patches/*.patch
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store mise exec -- pnpm install --frozen-lockfile --ignore-workspace
 RUN --mount=type=cache,target=/root/.m2/repository mise exec -- pnpm run release
 RUN mise exec -- pnpm run build:api-docs

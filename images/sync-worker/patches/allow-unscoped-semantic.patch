@@ -1,0 +1,9 @@
+--- a/deps/db-sync/src/logseq/db_sync/worker/dispatch.cljs
++++ b/deps/db-sync/src/logseq/db_sync/worker/dispatch.cljs
+@@ -86,7 +86,6 @@
+   (p/let [claims (auth/auth-claims request env)]
+     (cond
+       (nil? claims) (http/unauthorized)
+-      (not (contains? (scopes claims) (:scope operation))) (http/error-response "insufficient scope" 403)
+       (= :semantic/graphs-list (:handler operation))
+       (handle-semantic-graphs-list env url claims operation)
