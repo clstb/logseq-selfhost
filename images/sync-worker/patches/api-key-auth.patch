@@ -1,24 +1,26 @@
 diff --git a/deps/db-sync/src/logseq/db_sync/worker/dispatch.cljs b/deps/db-sync/src/logseq/db_sync/worker/dispatch.cljs
-index 6082807..f93dc08 100644
+index 6082807..bfdee98 100644
 --- a/deps/db-sync/src/logseq/db_sync/worker/dispatch.cljs
 +++ b/deps/db-sync/src/logseq/db_sync/worker/dispatch.cljs
-@@ -83,10 +83,12 @@
+@@ -83,10 +83,14 @@
                  (http/json-response nil result)))))))))
  
  (defn- handle-semantic-request [request ^js env ^js url operation]
 -  (p/let [claims (auth/auth-claims request env)]
-+  (let [admin? (admin-token-valid? request env)]
-+  (p/let [claims (if admin?
-+                   (p/resolved #js {:sub "admin-local"})
++  (let [api-key? (and (aget env "DB_SYNC_API_KEY")
++                      (= (.get (.-headers request) "x-api-key")
++                         (aget env "DB_SYNC_API_KEY")))
++  (p/let [claims (if api-key?
++                   #js {:sub "api-agent" :scope "logseq/read logseq/write"}
 +                   (auth/auth-claims request env))]
      (cond
 -      (nil? claims) (http/unauthorized)
 -      (not (contains? (scopes claims) (:scope operation))) (http/error-response "insufficient scope" 403)
-+      (and (nil? claims) (not admin?)) (http/unauthorized)
++      (and (nil? claims) (not api-key?)) (http/unauthorized)
        (= :semantic/graphs-list (:handler operation))
        (handle-semantic-graphs-list env url claims operation)
        :else
-@@ -109,7 +111,7 @@
+@@ -109,7 +113,7 @@
                                                                 (:operation-id operation) ":" graph-id)})]
                        (if (false? (aget result "success"))
                          (rate-limit-response)
