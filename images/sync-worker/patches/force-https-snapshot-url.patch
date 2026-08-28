@@ -1,0 +1,9 @@
+--- a/deps/db-sync/src/logseq/db_sync/worker/handler/sync.cljs
++++ b/deps/db-sync/src/logseq/db_sync/worker/handler/sync.cljs
+@@ -149,7 +149,8 @@
+ (defn- snapshot-stream-url [request graph-id]
+   (let [url (js/URL. (.-url request))]
+-    (str (.-origin url) "/sync/" graph-id "/snapshot/stream")))
++    ;; Behind a TLS-terminating reverse proxy, the internal request URL is http.
++    ;; Force https so returned URLs are externally reachable with auth headers.
++    (str "https://" (.-host url) "/sync/" graph-id "/snapshot/stream")))
