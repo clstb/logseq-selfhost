@@ -1,0 +1,29 @@
+diff --git a/deps/db-sync/src/logseq/db_sync/worker/dispatch.cljs b/deps/db-sync/src/logseq/db_sync/worker/dispatch.cljs
+index 6082807..f93dc08 100644
+--- a/deps/db-sync/src/logseq/db_sync/worker/dispatch.cljs
++++ b/deps/db-sync/src/logseq/db_sync/worker/dispatch.cljs
+@@ -83,10 +83,12 @@
+                 (http/json-response nil result)))))))))
+ 
+ (defn- handle-semantic-request [request ^js env ^js url operation]
+-  (p/let [claims (auth/auth-claims request env)]
++  (let [admin? (admin-token-valid? request env)]
++  (p/let [claims (if admin?
++                   (p/resolved #js {:sub "admin-local"})
++                   (auth/auth-claims request env))]
+     (cond
+-      (nil? claims) (http/unauthorized)
+-      (not (contains? (scopes claims) (:scope operation))) (http/error-response "insufficient scope" 403)
++      (and (nil? claims) (not admin?)) (http/unauthorized)
+       (= :semantic/graphs-list (:handler operation))
+       (handle-semantic-graphs-list env url claims operation)
+       :else
+@@ -109,7 +111,7 @@
+                                                                (:operation-id operation) ":" graph-id)})]
+                       (if (false? (aget result "success"))
+                         (rate-limit-response)
+-                        (forward-semantic-request request env operation url)))))))))))))
++                        (forward-semantic-request request env operation url))))))))))))))
+ 
+ (defn- request-user-id
+   [request]
