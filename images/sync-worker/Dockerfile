@@ -80,3 +80,4 @@ EXPOSE 8787
 
 CMD ["/usr/local/bin/start-sync-worker.sh"]
 # (touch Dockerfile comment)
+# rebuild trigger
