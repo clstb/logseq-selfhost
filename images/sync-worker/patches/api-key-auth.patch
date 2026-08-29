@@ -2,14 +2,15 @@ diff --git a/deps/db-sync/src/logseq/db_sync/worker/dispatch.cljs b/deps/db-sync
 index 6082807..bfdee98 100644
 --- a/deps/db-sync/src/logseq/db_sync/worker/dispatch.cljs
 +++ b/deps/db-sync/src/logseq/db_sync/worker/dispatch.cljs
-@@ -83,10 +83,14 @@
+@@ -83,10 +83,15 @@
                  (http/json-response nil result)))))))))
  
  (defn- handle-semantic-request [request ^js env ^js url operation]
 -  (p/let [claims (auth/auth-claims request env)]
 +  (let [api-key? (and (aget env "DB_SYNC_API_KEY")
++                      (not= "" (aget env "DB_SYNC_API_KEY"))
 +                      (= (.get (.-headers request) "x-api-key")
-+                         (aget env "DB_SYNC_API_KEY")))
++                         (aget env "DB_SYNC_API_KEY")))]
 +  (p/let [claims (if api-key?
 +                   #js {:sub "api-agent" :scope "logseq/read logseq/write"}
 +                   (auth/auth-claims request env))]
@@ -20,7 +21,7 @@ index 6082807..bfdee98 100644
        (= :semantic/graphs-list (:handler operation))
        (handle-semantic-graphs-list env url claims operation)
        :else
-@@ -109,7 +113,7 @@
+@@ -109,7 +114,7 @@
                                                                 (:operation-id operation) ":" graph-id)})]
                        (if (false? (aget result "success"))
                          (rate-limit-response)

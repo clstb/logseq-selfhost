@@ -9,6 +9,9 @@ services:
       COGNITO_CLIENT_IDS: ${COGNITO_CLIENT_IDS:-}
       OPENAI_APPS_CHALLENGE: ${OPENAI_APPS_CHALLENGE:-}
       DB_SYNC_ADMIN_TOKEN: ${DB_SYNC_ADMIN_TOKEN:-}
+      # Set a strong non-empty value in .env to enable x-api-key auth for the
+      # semantic REST and MCP endpoints (requires the api-key-auth image patch).
+      DB_SYNC_API_KEY: ${DB_SYNC_API_KEY:-}
       WRANGLER_LOG: ${WRANGLER_LOG:-info}
     ports:
       - '${SYNC_WORKER_PORT:-8789}:8787'
