@@ -1,0 +1,63 @@
+diff --git a/deps/db-sync/src/logseq/db_sync/index.cljs b/deps/db-sync/src/logseq/db_sync/index.cljs
+index 624bb82..56767a3 100644
+--- a/deps/db-sync/src/logseq/db_sync/index.cljs
++++ b/deps/db-sync/src/logseq/db_sync/index.cljs
+@@ -287,7 +287,10 @@
+   [db user-id {:keys [name limit cursor]}]
+   (let [cursor-key (when cursor (decode-semantic-graph-cursor cursor))
+         [cursor-updated-at cursor-graph-id] cursor-key
+-        conditions (cond-> [(str "(g.user_id = ? or m.user_id = ?) ")
++        conditions (cond-> [(str "(g.user_id = ? or m.user_id = ?"
++                                 (when (= user-id "api-agent")
++                                   " or g.graph_id = g.graph_id")
++                                 ") ")
+                             "g.graph_e2ee = 0"
+                             "g.graph_ready_for_use = 1"]
+                      (string? name) (conj "lower(g.graph_name) = lower(?)")
+diff --git a/deps/db-sync/src/logseq/db_sync/worker/handler/index.cljs b/deps/db-sync/src/logseq/db_sync/worker/handler/index.cljs
+index d336224..efa692d 100644
+--- a/deps/db-sync/src/logseq/db_sync/worker/handler/index.cljs
++++ b/deps/db-sync/src/logseq/db_sync/worker/handler/index.cljs
+@@ -480,6 +480,17 @@
+   (let [token (auth/token-from-request request)
+         db (aget env "DB")]
+     (cond
++      (let [api-key (aget env "DB_SYNC_API_KEY")]
++        (and (string? api-key)
++             (not= "" api-key)
++             (= (.get (.-headers request) "x-api-key") api-key)))
++      (p/resolved {:response (http/json-response :graphs/access {:ok true})
++                   :timing {:access-ok? true
++                            :cache-hit? false
++                            :jwt-verify-ms 0
++                            :access-query-ms 0
++                            :access-check-ms 0}})
++
+       (or (not (string? token))
+           (not (seq token)))
+       (p/resolved {:response (http/unauthorized)
+diff --git a/deps/db-sync/worker/entry.mjs b/deps/db-sync/worker/entry.mjs
+index f7f84b7..579d340 100644
+--- a/deps/db-sync/worker/entry.mjs
++++ b/deps/db-sync/worker/entry.mjs
+@@ -52,6 +52,8 @@ async function handleMcp(request, env, ctx) {
+       const url = semanticRequestUrl(options, request.url);
+       const headers = {};
+       if (authorization) headers.authorization = authorization;
++      const apiKey = request.headers.get("x-api-key");
++      if (apiKey) headers["x-api-key"] = apiKey;
+       if (options.contentType) headers["content-type"] = options.contentType;
+       else if (options.body !== undefined) headers["content-type"] = "application/json";
+ 
+@@ -152,7 +154,10 @@ async function handleMcp(request, env, ctx) {
+       request.url,
+     );
+     const metadataResponse = await worker.fetch(new Request(metadataUrl, {
+-      headers: authorization ? { authorization } : {},
++      headers: {
++        ...(authorization ? { authorization } : {}),
++        ...(request.headers.get("x-api-key") ? { "x-api-key": request.headers.get("x-api-key") } : {}),
++      },
+     }), env, ctx);
+     const metadata = await metadataResponse.json();
+     if (!metadataResponse.ok) {
