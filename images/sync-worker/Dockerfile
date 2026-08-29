@@ -40,13 +40,14 @@ RUN mise exec -- corepack enable
 COPY images/sync-worker/patches /tmp/patches
 RUN git apply --check /tmp/patches/*.patch \
   && git apply /tmp/patches/*.patch \
-  && grep -q "x-api-key" deps/db-sync/src/logseq/db_sync/worker/handler/index.cljs \
-  && grep -q "x-api-key" deps/db-sync/worker/entry.mjs \
-  && grep -q "g.graph_id = g.graph_id" deps/db-sync/src/logseq/db_sync/index.cljs \
+  && grep -q "x-api-key" src/logseq/db_sync/worker/handler/index.cljs \
+  && grep -q "access-query-ms 0" src/logseq/db_sync/worker/handler/index.cljs \
+  && grep -q "x-api-key" worker/entry.mjs \
+  && grep -q "g.graph_id = g.graph_id" src/logseq/db_sync/index.cljs \
   && echo "patch markers present in sources"
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store mise exec -- pnpm install --frozen-lockfile --ignore-workspace
 RUN --mount=type=cache,target=/root/.m2/repository mise exec -- pnpm run release \
-  && grep -rq "g.graph_id = g.graph_id" worker/dist/worker \
+  && grep -rq "graph_id = g.graph_id" worker/dist/worker \
   && echo "patch markers present in compiled output"
 RUN mise exec -- pnpm run build:api-docs
 COPY images/sync-worker/wrangler.selfhost.toml /src/deps/db-sync/worker/wrangler.selfhost.toml
@@ -54,6 +55,9 @@ RUN cd worker \
   && mise exec -- wrangler deploy --dry-run \
     --config wrangler.selfhost.toml \
     --outdir /tmp/sync-worker
+RUN grep -c "x-api-key" /tmp/sync-worker/entry.js \
+  && grep -q "graph_id = g.graph_id" /tmp/sync-worker/entry.js \
+  && echo "patch markers present in bundle"
 
 FROM node:24-bookworm-slim@sha256:3638d9a6fe4030bd716be989438248074489337ba3275657f93595428be4fc03
 
