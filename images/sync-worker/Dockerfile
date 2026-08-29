@@ -38,12 +38,15 @@ RUN mise trust /src/mise.toml
 WORKDIR /src/deps/db-sync
 RUN mise exec -- corepack enable
 COPY images/sync-worker/patches /tmp/patches
-RUN git apply --check /tmp/patches/*.patch \
+# Apply from the repo ROOT: git apply run from a subdirectory silently
+# ignores patch paths outside it, so patches could be skipped entirely.
+RUN cd /src \
+  && git apply --check /tmp/patches/*.patch \
   && git apply /tmp/patches/*.patch \
-  && grep -q "x-api-key" src/logseq/db_sync/worker/handler/index.cljs \
-  && grep -q "access-query-ms 0" src/logseq/db_sync/worker/handler/index.cljs \
-  && grep -q "x-api-key" worker/entry.mjs \
-  && grep -q "g.graph_id = g.graph_id" src/logseq/db_sync/index.cljs \
+  && grep -q "x-api-key" deps/db-sync/src/logseq/db_sync/worker/handler/index.cljs \
+  && grep -q "access-query-ms 0" deps/db-sync/src/logseq/db_sync/worker/handler/index.cljs \
+  && grep -q "x-api-key" deps/db-sync/worker/entry.mjs \
+  && grep -q "g.graph_id = g.graph_id" deps/db-sync/src/logseq/db_sync/index.cljs \
   && echo "patch markers present in sources"
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store mise exec -- pnpm install --frozen-lockfile --ignore-workspace
 RUN --mount=type=cache,target=/root/.m2/repository mise exec -- pnpm run release \
