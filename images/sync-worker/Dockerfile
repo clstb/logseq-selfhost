@@ -39,9 +39,15 @@ WORKDIR /src/deps/db-sync
 RUN mise exec -- corepack enable
 COPY images/sync-worker/patches /tmp/patches
 RUN git apply --check /tmp/patches/*.patch \
-  && git apply /tmp/patches/*.patch
+  && git apply /tmp/patches/*.patch \
+  && grep -q "x-api-key" deps/db-sync/src/logseq/db_sync/worker/handler/index.cljs \
+  && grep -q "x-api-key" deps/db-sync/worker/entry.mjs \
+  && grep -q "g.graph_id = g.graph_id" deps/db-sync/src/logseq/db_sync/index.cljs \
+  && echo "patch markers present in sources"
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store mise exec -- pnpm install --frozen-lockfile --ignore-workspace
-RUN --mount=type=cache,target=/root/.m2/repository mise exec -- pnpm run release
+RUN --mount=type=cache,target=/root/.m2/repository mise exec -- pnpm run release \
+  && grep -rq "g.graph_id = g.graph_id" worker/dist/worker \
+  && echo "patch markers present in compiled output"
 RUN mise exec -- pnpm run build:api-docs
 COPY images/sync-worker/wrangler.selfhost.toml /src/deps/db-sync/worker/wrangler.selfhost.toml
 RUN cd worker \
